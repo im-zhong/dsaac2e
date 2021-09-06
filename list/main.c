@@ -2,9 +2,10 @@
 // zhangzhong
 // 那我就用这个链表实现一个多项式加法吧
 
-#include "list.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include "stack.h"
+#include "queue.h"
 
 typedef struct
 {
@@ -25,7 +26,7 @@ void print_polynomial(const polynomial_t *polynomial)
     printf("%d, %d\n", polynomial->coefficient, polynomial->power);
 }
 
-#include "stack.h"
+
 
 typedef struct
 {
@@ -39,6 +40,12 @@ typedef struct
     int i;
     INHERIT_STACK;
 } int_stack_t;
+
+typedef struct
+{
+    int i;
+    INHERIT_QUEUE;
+} int_queue_t;
 
 int main(int argc, char* argv[])
 {
@@ -71,8 +78,25 @@ int main(int argc, char* argv[])
         stack_pop(&int_stack);
         free(pi);
     }
-}
 
+    printf("queue\n");
+    queue_init(queue);
+    int_queue_t *pq;
+    for (int i = 0; i< 10; ++i)
+    {
+        pq = malloc(sizeof(int_queue_t));
+        pq->i = i;
+        queue_push(&queue, pq);
+    }
+
+    while (!queue_is_empty(&queue))
+    {
+        pq = queue_top(&queue, int_queue_t);
+        printf("%d\n", pq->i);
+        queue_pop(&queue);
+        free(pq);
+    }
+}
 
 int list_main(int argc, char *argv[])
 {

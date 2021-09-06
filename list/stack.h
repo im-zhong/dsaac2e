@@ -24,7 +24,7 @@
     slist_insert_after(head, &(entry)->STACK_MEMBER)
 
 #define stack_pop(head) \
-    slist_erase_after(head);
+    slist_erase_after(head)
 
 // 这里返回的额是内部指针，这是不对的
 #define stack_top(head, type) \
