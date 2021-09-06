@@ -25,7 +25,56 @@ void print_polynomial(const polynomial_t *polynomial)
     printf("%d, %d\n", polynomial->coefficient, polynomial->power);
 }
 
-int main(int argc, char *argv[])
+#include "stack.h"
+
+typedef struct
+{
+    char *symbol;
+
+    INHERIT_STACK;
+} symbol_stack_t;
+
+typedef struct
+{
+    int i;
+    INHERIT_STACK;
+} int_stack_t;
+
+int main(int argc, char* argv[])
+{
+    stack_init(stack);
+    
+    symbol_stack_t *symbol = malloc(sizeof(symbol_stack_t));
+
+    // 就仅仅提供四个成员函数即可
+    stack_push(&stack, symbol);
+
+    stack_pop(&stack);
+
+    symbol = stack_top(&stack, symbol_stack_t);
+
+    stack_is_empty(&stack);
+
+    stack_init(int_stack);
+    int_stack_t *pi;
+    for (int i = 0; i < 10; ++i)
+    {
+        pi = malloc(sizeof(int_stack_t));
+        pi->i = i;
+        stack_push(&int_stack, pi);
+    }
+
+    while (!stack_is_empty(&int_stack))
+    {
+        pi = stack_top(&int_stack, int_stack_t);
+        printf("%d\n", pi->i);
+        stack_pop(&int_stack);
+        free(pi);
+    }
+}
+
+
+int list_main(int argc, char *argv[])
 {
     // 提供两种初始化head的方式
     // list_node_t head;
@@ -225,6 +274,7 @@ int main(int argc, char *argv[])
         print_polynomial(polynomial);
     }
 
+    return 0;
 }
 
 int old_main(int argc, char *argv[])
