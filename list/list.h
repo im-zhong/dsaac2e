@@ -30,6 +30,11 @@ typedef struct list_node_t
 // 分明就是给.c文件包含用的
 // TODO: 把list_node_t的声明与相关实现函数分开放到两个头文件里面
 
+// TODO: 排序链表的merge操作
+// TODO: 以链表表示集合的相关集合操作，交集 并集 差集
+// TODO: reverse操作反转链表
+// TODO: 排序链表的unique操作，这些好像都是stl里面的算法
+
 /**
  * @brief create and init a list head
  * @head:   list head variable name
