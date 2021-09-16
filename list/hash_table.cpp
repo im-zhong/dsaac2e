@@ -42,7 +42,7 @@
 // 内核将其划分为两种
 // 32bit 64bit
 
-#define load_factor_threshold (1.25)
+#define load_factor_threshold 1.0
 
 // bits指的是数组的长度
 // 比如 bits = 8
@@ -185,10 +185,14 @@ static inline void hash_table_insert_impl(hash_table *table,
     list_insert_after(head, node);
 }
 
+// 重新定义一下load_factor
 static inline double load_factor(hash_table *table)
 {
-    return (double)(table->size) / (double)(table->slot_size);
+    // 是实际存储的数量和slot槽的数量，也就是数组的大小
+    return (double)(table->size) / (double)(table->capacity);
 }
+
+// 而threshold就让他成为1.0
 
 
 
