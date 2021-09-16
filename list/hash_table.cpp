@@ -36,12 +36,13 @@
 #include "list.h"
 #include <stddef.h>
 #include <stdlib.h>
+#include <string.h>
 
 // 数字哈希函数
 // 内核将其划分为两种
 // 32bit 64bit
 
-#define load_refactor_threshold (1.25)
+#define load_factor_threshold (1.25)
 
 // bits指的是数组的长度
 // 比如 bits = 8
@@ -140,13 +141,53 @@ list_entry *hash_table_find(hash_table *table, int key)
     }
 }
 
-
-list_node_t *hash_table_index(hash_table *table, int key)
+// 同时，用户也可以提供一个一起的函数，就是把上面这两个函数结合起来
+// user define
+static inline void hash_table_insert(hash_table *table, list_entry *entry)
 {
-    size_t index = hash_integer(key, table->bits);
-    list_node_t *head = &table->slots[index];
+    // 因为这个
+    hash_table_insert_impl(table, hash_table_index_slot(table, entry->key), &entry->node);
+    if (load_factor(table) > load_factor_threshold)
+        hash_table_rehash(table);
+}
 
-    
+
+// 还剩下一个删除，
+// 这个函数还是只能用户来写，因为我不可能知道key是什么
+// 我能做的，就是给你提供一个把node从hashtable里面删掉的简单函数
+static inline void hash_table_erase(hash_table *table, int key)
+{
+    // 首先调用自己编写的find函数
+    list_entry *entry = hash_table_find(table, key);
+    if (entry)
+    {
+        // 我需要找到他在那条链表里面
+        // 好像没有办法仅调用find, 我们的find还需要返回一个head
+        // hash_table_erase_impl(table, entry->node);
+        // 这里是不需要的，因为我们删除的一定不是head
+        list_erase(entry->node);
+    }
+}
+
+// 这个函数需要用户提供，因为我们不知道key是什么样子的
+// 只不过这里的key都是以int为例
+static inline list_node_t *hash_table_index_slot(hash_table *table, int key)
+{
+    return &table->slots[hash_integer(key, table->bits)];
+}
+
+static inline void hash_table_insert_impl(hash_table *table,
+                                                  list_node_t *head, list_node_t *node)
+{
+    if (list_is_empty(head))
+        ++(table->slot_size);
+    ++(table->size);
+    list_insert_after(head, node);
+}
+
+static inline double load_factor(hash_table *table)
+{
+    return (double)(table->size) / (double)(table->slot_size);
 }
 
 
@@ -157,73 +198,47 @@ list_node_t *hash_table_index(hash_table *table, int key)
 // 我们可以提供一些帮助函数，比如用户通过查找发现没有这个值
 // 可以直接调用add
 
+static inline void hash_table_move(hash_table *old_table, hash_table *new_table)
+{
+    // 好像有一个快速的move来着，忘了。。。
+    // O, 想起来了，内存拷贝
+    // memcpy()
+    memcpy(new_table, old_table, sizeof(hash_table));
+}
+
+
 
 // hash表的遍历是没有顺序的
-// #define hash_table_for_each_entry(entry, )
+// @table: hash_table *, the hash table to iterate
+// @entry: list_entry *
+// @type: list_entry
+// @member: the list_node_t member in list_entry
+#define hash_table_for_each_entry(table, entry, type, member) \
+    for (size_t index = 0; index < table->capacity; ++index) \
+        list_for_each_entry(entry, &table->slots[index], type, member)
+
+        // 在这里你可以使用你的entry对象，来获取所有的东西
 
 // 什么是rehash？？
 // 其实就是遍历一遍之前的hash表，然后重新插入到一个新的hash表
 // 并且这个值是没有重复的，所以我们不需要进行值的检查
+// 这个函数同样需要用户进行定义，但是模板是固定的，直接copy就可以了
 void hash_table_rehash(hash_table *table)
 {
-    // 这里不太对啊，我得是一个已经分配好的结构啊
-    // 那就直接在table里面呗...
-    // 不对，这里不需要建立一个新的rehash_table
-    // 我们应该提供一个新的函数，这个函数用于创建一个list数组，并且初始化
+    // 初始化一张hash_table,用来存放被rehash的数据
     hash_table rehash_table;
     hash_table_init(&rehash_table, table->bits + 1);
 
-
-    // 我们要遍历整张hash表
-    // 这个遍历的动作应该是可以给出方便的宏的
-    // 先不用宏写一个
-    for (size_t i = 0; i < table->capacity; ++i)
+    // 遍历原来的表，进行一个hash的re
+    list_entry *entry = nullptr;
+    hash_table_for_each_entry(table, entry, list_entry, node)
     {
-        // 遍历每一个list
-        list_entry *entry = nullptr;
-        list_node_t *head = &table->slots[i];
-        list_for_each_entry(entry, head, list_entry, node)
-        {
-            // 下面的这一段可以组合成一个函数吗??
-            size_t index = hash_integer(entry->key);
-            list_node_t *new_head = &rehash_table.slots[index];
-            if (list_is_empty(new_head))
-                ++(rehash_table.slot_size);
-            ++(rehash_table.size);
-            list_insert_after(head, &entry->node);
-        }
+        // 用户实现一个不会检查重复和不会引发rehash的插入函数，放在这里
+        hash_table_insert(rehash_table, entry);
     }
 
     // 我们可以释放掉整个数组了
     free(table->slots);
-    *new_table = &rehash_table;
+    // 用新的rehashed的table代替旧的
+    hash_table_move(table, &rehash_table);
 }
-
-
-void hash_table_insert(hash_table *table, list_node_t *head, list_node_t *node)
-{
-    // 通过这个函数，我们可以实现rehash
-    // rehash可以不通过用户代码实现吗
-
-    // 取得链表头
-    if (list_is_empty(head))
-        ++(table->slot_size);
-    ++(table->size);
-
-    // 什么是能存放n个元素，具有m个槽位
-    // load_factor = n / m
-    // 所有n个关键字都散列到同一个槽中
-    // 此时 n / m = n / 1 = n >> 1
-    // n表示的就是容器的size, 其实这个是元素的数量，相当于 std::size
-    // m表示的slots的数量，slots指的是非空的链表数量
-    double load_factor = (double)(table->size) / (double)(table->slot_size);
-    if (load_factor > load_refactor_threshold)
-    {
-        hash_table_rehash(table);
-    }
-}
-
-
-
-
-

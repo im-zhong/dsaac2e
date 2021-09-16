@@ -81,6 +81,8 @@ static inline void list_erase_between(list_node_t *prev, list_node_t *next)
     next->prev = prev;
 }
 
+// 调用这个函数，node一定不能是head
+// 否则这个链表就没有head了
 static inline void list_erase(list_node_t *node)
 {
     list_erase_between(node->prev, node->next);
